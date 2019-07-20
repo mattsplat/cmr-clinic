@@ -3,6 +3,7 @@ import Vuex from 'vuex'
 
 import createPersistedState from 'vuex-persistedstate';     // From https://github.com/robinvdvleuten/vuex-persistedstate
 import Cookies from "js-cookie";
+import {normalize} from "./normalize";
 
 
 Vue.use(Vuex)
@@ -22,7 +23,8 @@ const store = () => new Vuex.Store({
     state: {
         apiUrlPrefix: '/api',  // '/api',     // Used infront of CRUD api calls.  /api
         client: {},
-        convictions: []
+        convictions: [],
+        charges: [],
     },
     getters: {
 
@@ -33,7 +35,12 @@ const store = () => new Vuex.Store({
             return state.convictions;
         },
         chargesForConviction: (state) => (conviction_offset) => {
-            return state.convictions[conviction_offset].charges;
+            if(state.convictions[conviction_offset].charges) {
+              return state.convictions[conviction_offset].charges.map(x => state.charges[x]);
+            } else {
+              return []
+            }
+
         }
         // allQuestions(state) {
         //     return state.questions
@@ -151,6 +158,15 @@ const store = () => new Vuex.Store({
 
         },
 
+        STORE_CONVICTION_CHARGES(state, data) {
+          console.log('mutation STORE_CONVICTION_CHARGES');
+
+          Vue.set(state, 'charges', data);
+
+          console.log('mutation STORE_CONVICTION_CHARGES  exit');
+          // state.client = data;
+        },
+
         addCharge(state, data) {
             console.log('addCharge');
 
@@ -199,8 +215,7 @@ const store = () => new Vuex.Store({
 //                    ]
 //                };
 //            }
-        },
-
+        }
 
     },
 
@@ -341,10 +356,10 @@ const store = () => new Vuex.Store({
             await this.$axios.get(this.state.apiUrlPrefix + '/clients/' + id + '/convictions')
                 .then((res) => {
                     if (res.status === 200) {
-
-                        console.log(res.data);
-
-                        commit('STORE_CLIENT_CONVICTIONS', res.data)
+                        let normalized_data = normalize(res.data)
+                        console.log('normalized data', normalized_data)
+                        commit('STORE_CLIENT_CONVICTIONS', normalized_data.convictions)
+                        commit('STORE_CONVICTION_CHARGES', normalized_data.charges)
                     } else {
                         console.log('error');
                     }
